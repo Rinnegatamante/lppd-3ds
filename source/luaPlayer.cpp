@@ -41,7 +41,7 @@
 #include "include/luaplayer.h"
 
 static lua_State *L;
-bool isCSND;
+extern void drawError(char* cmd, char* format, ...);
 
 const char *runScript(const char* script, bool isStringBuffer)
 {
@@ -80,7 +80,6 @@ const char *runScript(const char* script, bool isStringBuffer)
 	if (s) 
 	{
 		errMsg = lua_tostring(L, -1);
-		printf("error: %s\n", lua_tostring(L, -1));
 		lua_pop(L, 1); // remove error message
 	}
 	lua_close(L);

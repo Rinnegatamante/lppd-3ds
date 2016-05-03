@@ -7,11 +7,13 @@
 #include <math.h>
 #include "include/luaplayer.h"
 #include "include/graphics/graphics.h"
+#include "include/scrutil/scrutil.h"
 
 uint8_t* TopLFB;
 uint8_t* BottomLFB;
 GLenum texture_format=NULL;
 bool quit = 0;
+scrAttributes attrs;
 
 int main(int argc, char* argv[]){
 	
@@ -36,6 +38,8 @@ int main(int argc, char* argv[]){
 	glMatrixMode( GL_MODELVIEW );
 	glLoadIdentity();
 	SDL_WM_SetCaption("Lua Player Plus Debugger 3DS", NULL);
+	attrs = scrGetCurrentAttributes();
+	drawDebug("Debug: ","Starting interpreter.\n");
 	char* buffer;
 
 	// Generating framebuffers for openGL
@@ -57,7 +61,7 @@ int main(int argc, char* argv[]){
 	
 	FILE* main_script = fopen(filename, "r");
 	if (main_script == NULL){
-		printf("FATAL ERROR: Main script not found.\n");
+		drawError("FATAL ERROR: ","Main script not found.\n");
 		quit = true;
 	}else{
 		fseek(main_script, 0, SEEK_END);
@@ -79,12 +83,13 @@ int main(int argc, char* argv[]){
 		
 		if (buffer != NULL) errMsg = runScript((const char*)buffer, true);
 		else{
-			printf("FATAL ERROR: Main script is empty.\n");
+			drawError("FATAL ERROR: ","Main script is empty.\n");
 			quit = true;
 		}
 		
 		// Fake error to force interpreter shutdown
 		if (strstr(errMsg, "lpp_exit_04")) break;
+		drawError("Error: ","%s.\n", errMsg);
 		
 		while (!quit){
 			while( SDL_PollEvent( &event ) ) {
