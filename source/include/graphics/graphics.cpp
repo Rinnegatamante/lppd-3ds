@@ -94,9 +94,23 @@ void DrawPixel(u8* screen, int x,int y, u32 color){
 	*(u32*)&(screen[idx]) = (((color) & 0x00FFFFFF) | ((*(u32*)&(screen[idx])) & 0xFF000000));
 }
 
+void DrawAlphaPixel(u8* screen, int x,int y, u32 color){
+	u8 alpha = (((color) >> 24) & 0xFF);
+	int idx = (x + y * ((screen == TopLFB) ? 400 : 320)) * 3;
+	float ratio = alpha / 255.0f;
+	screen[idx*3] = ((color & 0xFF) * ratio) + (screen[idx*3] * (1.0 - ratio));
+	screen[idx*3+1] = ((((color) >> 8) & 0xFF) * ratio) + (screen[idx*3+1] * (1.0 - ratio));
+	screen[idx*3+2] = ((((color) >> 16) & 0xFF) * ratio) + (screen[idx*3+2] * (1.0 - ratio));
+}
+
 void DrawImagePixel(u8* screen, int x,int y, u32 color, int w){
 	int idx = (x + y * w) * 3;
 	*(u32*)&(screen[idx]) = (((color) & 0x00FFFFFF) | ((*(u32*)&(screen[idx])) & 0xFF000000));
+}
+
+void Draw32bppImagePixel(u8* screen, int x,int y, u32 color, int w){
+	int idx = (x + y * w) * 4;
+	*(u32*)&(screen[idx]) = color;
 }
 
 void DrawScreenText(int x, int y, char* str, u32 color, int screen,int side){
@@ -136,6 +150,9 @@ void DrawScreenText(int x, int y, char* str, u32 color, int screen,int side){
 }
 
 void DrawImageText(int x, int y, char* str, u32 color, SDL_Surface* img){
+	void (*drawCallback)(u8*, int, int, u32, int);
+	if (img->format->BitsPerPixel == 24) drawCallback = DrawImagePixel;
+	else drawCallback = Draw32bppImagePixel;
 	u8* buffer = (u8*)img->pixels;
 	unsigned short* ptr;
 	unsigned short glyphsize;
@@ -157,7 +174,7 @@ void DrawImageText(int x, int y, char* str, u32 color, SDL_Surface* img){
 		for (cy = 0; cy < 12; cy++){
 			unsigned short val = ptr[4+cy];
 			for (cx = 0; cx < glyphsize; cx++){
-				if (val & (1 << cx)) DrawImagePixel(buffer, x+cx, y+cy, color, img->w);
+				if (val & (1 << cx)) drawCallback(buffer, x+cx, y+cy, color, img->w);
 			}
 		}
 		x += glyphsize;
@@ -184,6 +201,66 @@ void PrintScreenImage(int xp,int yp, SDL_Surface* result, int screen, int side){
 			}
 		}
 	}else{
-		//
+		for (y = 0; y < result->h; y++){
+			for (x = 0; x < result->w; x++){
+				u8* pixels_data = (u8*)result->pixels;
+				u32 color = *((u32*)&pixels_data[(x + (result->w * y)) * 4]);
+				DrawAlphaPixel(buffer,xp+x,yp+y,color);
+			}
+		}
+	}
+}
+
+void PrintPartialImageImage(int xp,int yp,int st_x,int st_y,int width,int height, SDL_Surface* result, SDL_Surface* result2){
+	void (*drawCallback)(u8*, int, int, u32, int);
+	if (result2->format->BitsPerPixel == 24) drawCallback = DrawImagePixel;
+	else drawCallback = Draw32bppImagePixel;
+	u8* buffer = (u8*)result2->pixels;
+	int x, y;
+	if (result->format->BitsPerPixel){
+		for (y = st_y; y < st_y + height; y++){
+			for (x = st_x; x < st_x + width; x++){
+				u8* pixels_data = (u8*)result->pixels;
+				u32 color = *((u32*)&pixels_data[(x + (result->w * y)) * 3]);
+				drawCallback(buffer,xp+x-st_x,yp+y-st_y,color,result2->w);
+			}
+		}
+	}else{
+		for (y = st_y; y < st_y + height; y++){
+			for (x = st_x; x < st_x + width; x++){
+				u8* pixels_data = (u8*)result->pixels;
+				u32 color = *((u32*)&pixels_data[(x + (result->w * y)) * 4]);
+				drawCallback(buffer,xp+x-st_x,yp+y-st_y,color,result2->w);
+			}			
+		}
+	}
+}
+
+void PrintPartialScreenImage(int xp,int yp,int st_x,int st_y,int width,int height, SDL_Surface* result,int screen,int side){
+	#ifndef SKIP_ERROR_HANDLING
+		if(!result) return;
+	#endif
+	u8* buffer = NULL;
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else return;
+	}else if (screen == 1) buffer = BottomLFB;
+	int x, y;
+	if (result->format->BitsPerPixel){
+		for (y = st_y; y < st_y + height; y++){
+			for (x = st_x; x < st_x + width; x++){
+				u8* pixels_data = (u8*)result->pixels;
+				u32 color = *((u32*)&pixels_data[(x + (result->w * y)) * 3]);
+				DrawPixel(buffer,xp+x-st_x,yp+y-st_y,color);
+			}
+		}
+	}else{
+		for (y = st_y; y < st_y + height; y++){
+			for (x = st_x; x < st_x + width; x++){
+				u8* pixels_data = (u8*)result->pixels;
+				u32 color = *((u32*)&pixels_data[(x + (result->w * y)) * 4]);
+				DrawAlphaPixel(buffer,xp+x-st_x,yp+y-st_y,color);
+			}			
+		}
 	}
 }

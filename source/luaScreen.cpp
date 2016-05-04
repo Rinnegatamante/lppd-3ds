@@ -129,7 +129,6 @@ static int lua_drawimg(lua_State *L)
 		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
 		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
 	#endif
-	SDL_LockSurface(file);
 	if (screen == 0){
 		bool partial_x = false;
 		bool partial_y = false;
@@ -141,7 +140,7 @@ static int lua_drawimg(lua_State *L)
 			int height = file->h;
 			if (partial_x) width = 400-x;
 			if (partial_y) height = 240-y;
-			//PrintPartialScreenBitmap(x,y,0,0,width,height,file,screen,side);
+			PrintPartialScreenImage(x,y,0,0,width,height,file,screen,side);
 		}else PrintScreenImage(x,y,file,screen,side);
 	}else{
 		bool partial_x = false;
@@ -154,10 +153,40 @@ static int lua_drawimg(lua_State *L)
 			int height = file->h;
 			if (partial_x) width = 320-x;
 			if (partial_y) height = 240-y;
-			//PrintPartialScreenBitmap(x,y,0,0,width,height,file,screen,side);
+			PrintPartialScreenImage(x,y,0,0,width,height,file,screen,side);
 		}else PrintScreenImage(x,y,file,screen,side);
 	}
-	SDL_UnlockSurface(file);
+	return 0;
+}
+
+static int lua_partial(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 8) && (argc != 9)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+	int st_x = luaL_checkinteger(L, 3);
+    int st_y = luaL_checkinteger(L, 4);
+	int width = luaL_checkinteger(L, 5);
+    int height = luaL_checkinteger(L, 6);
+	SDL_Surface* file = (SDL_Surface*)luaL_checkinteger(L, 7);
+	int screen= luaL_checkinteger(L, 8);
+	int side = 0;
+	if (argc == 9) side = luaL_checkinteger(L,9);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((st_x < 0) || (st_y < 0)) return luaL_error(L, "out of image bounds");
+		if (((st_x + width) > file->w) || (((st_y + height) > file->h))) return luaL_error(L, "out of image bounds");
+		if ((screen == 0) && ((x+width) > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && ((x+width) > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && ((y+height) > 240)) return luaL_error(L, "out of framebuffer bounds");
+	#endif
+	drawCommand("Screen.drawPartialImage: ","Drawing image at offset 0x%lX.\n",file);
+	if (screen > 1){
+		drawWarning("Warning: ","Skipped target image checks.\n");
+		PrintPartialImageImage(x,y,st_x,st_y,width,height,file,(SDL_Surface*)screen);
+	}else PrintPartialScreenImage(x,y,st_x,st_y,width,height,file,screen,side);
 	return 0;
 }
 
@@ -227,6 +256,7 @@ static const luaL_Reg Color_functions[] = {
 static const luaL_Reg Screen_functions[] = {
   {"loadImage",			lua_loadimg},
   {"drawImage",			lua_drawimg},
+  {"drawPartialImage",  lua_partial}, 
   {"freeImage",			lua_freeimg},
   {"debugPrint",		lua_print},
   {"drawPixel",			lua_pixel},
