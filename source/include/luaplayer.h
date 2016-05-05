@@ -42,6 +42,7 @@ extern void luaC_collectgarbage (lua_State *L);
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CLAMP(val, min, max) ((val)>(max)?(max):((val)<(min)?(min):(val)))
+#define CTRL_HANDLES 32
 
 const char *runScript(const char* script, bool isStringBuffer);
 void luaC_collectgarbage (lua_State *L);

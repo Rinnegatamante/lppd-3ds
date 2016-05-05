@@ -14,6 +14,7 @@ uint8_t* BottomLFB;
 GLenum texture_format=NULL;
 bool quit = 0;
 scrAttributes attrs;
+extern uint8_t* ctrl_handles[];
 
 int main(int argc, char* argv[]){
 	
@@ -84,7 +85,11 @@ int main(int argc, char* argv[]){
 		if (buffer != NULL) errMsg = runScript((const char*)buffer, true);
 		else{
 			drawError("FATAL ERROR: ","Main script is empty.\n");
-			quit = true;
+			break;
+		}
+		
+		for (int i=0; i < CTRL_HANDLES; i++){
+			if (ctrl_handles[i] != NULL) free(ctrl_handles[i]);
 		}
 		
 		// Fake error to force interpreter shutdown

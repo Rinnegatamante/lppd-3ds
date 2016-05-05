@@ -53,6 +53,7 @@ const char *runScript(const char* script, bool isStringBuffer)
 	// Modules
 	luaSystem_init(L);
 	luaScreen_init(L);
+	luaControls_init(L);
 	
 	int s = 0;
 	const char *errMsg = NULL;
