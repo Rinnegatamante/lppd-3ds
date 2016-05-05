@@ -209,12 +209,47 @@ static int lua_pixel(lua_State *L){
 		if ((screen <= 1) && (y > 240)) return luaL_error(L, "out of framebuffer bounds");
 	#endif
 	u8* buffer;
-		if (screen == 0){
-			if (side == 0) buffer = TopLFB;
-			else return 0;
-		}else if (screen == 1) buffer = BottomLFB;
-	DrawPixel(buffer,x,y,color);
+	if (screen == 0){
+		if (side == 0) buffer = TopLFB;
+		else return 0;
+	}else if (screen == 1) buffer = BottomLFB;
+	if (screen > 1){
+		SDL_Surface* target = (SDL_Surface*)screen;
+		if (target->format->BitsPerPixel == 24) DrawImagePixel((u8*)target->pixels, x, y, color, target->w);
+		else Draw32bppImagePixel((u8*)target->pixels, x, y, color, target->w);
+	}else{
+		if (alpha == 0xFF) DrawPixel(buffer,x,y,color);
+		else DrawAlphaPixel(buffer,x,y,color);
+	}
 	return 0;
+}
+
+static int lua_pixel2(lua_State *L){
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int x = luaL_checkinteger(L,1);
+	int y = luaL_checkinteger(L,2);
+	int screen = luaL_checkinteger(L,3);
+	int side=0;
+	if (argc == 4) side = luaL_checkinteger(L,4);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x < 0) || (y < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y > 240)) return luaL_error(L, "out of framebuffer bounds");
+	#endif
+	if (screen > 1){
+		drawWarning("Warning: ","Skipped target image checks.\n");
+		lua_pushinteger(L,GetImagePixel(x,y,(SDL_Surface*)screen));
+	}else{
+		uint8_t* buffer;
+		if (screen == 0) buffer = TopLFB;
+		else buffer = BottomLFB;
+		lua_pushinteger(L,GetPixel(x,y,buffer,side));
+	}
+	return 1;
 }
 
 static int lua_refresh(lua_State *L)
@@ -260,6 +295,7 @@ static const luaL_Reg Screen_functions[] = {
   {"freeImage",			lua_freeimg},
   {"debugPrint",		lua_print},
   {"drawPixel",			lua_pixel},
+  {"getPixel",			lua_pixel2},
   {"flip",				lua_flip},
   {"refresh",			lua_refresh},
   {"waitVblankStart",	lua_vblank},

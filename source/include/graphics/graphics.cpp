@@ -264,3 +264,21 @@ void PrintPartialScreenImage(int xp,int yp,int st_x,int st_y,int width,int heigh
 		}
 	}
 }
+
+u32 GetPixel(int x,int y,u8* screen,int side){
+	int idx = (x + y * ((screen == TopLFB) ? 400 : 320)) * 3;
+	u32 color = (screen[idx] & 0x00FFFFFF) | (0xFFFFFFFF & 0xFF000000);
+	return color;
+}
+
+u32 GetImagePixel(int x,int y,SDL_Surface* screen){
+	u32 color;
+	if (screen->format->BitsPerPixel == 24){
+		int idx = (x + y * screen->w) * 3;
+		color = ((*(u32*)&(((u8*)screen->pixels)[idx])) & 0x00FFFFFF) | (0xFFFFFFFF & 0xFF000000);
+	}else{ 
+		int idx = (x + y * screen->w) * 4;
+		color = *(u32*)&(((u8*)screen->pixels)[idx]);
+	}
+return color;
+}
