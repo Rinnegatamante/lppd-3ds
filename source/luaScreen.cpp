@@ -269,6 +269,65 @@ static int lua_refresh(lua_State *L)
 	return 0;
 }
 
+static int lua_color(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+	#endif
+    int r = luaL_checkinteger(L, 1);
+    int g = luaL_checkinteger(L, 2);
+	int b = luaL_checkinteger(L, 3);
+	int a = 255;
+	if (argc==4) a = luaL_checkinteger(L, 4);
+    u32 color = r | (g << 8) | (b << 16) | (a << 24);
+    lua_pushinteger(L,color);
+    return 1;
+}
+
+static int lua_getR(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+    int color = luaL_checkinteger(L, 1);
+    u32 colour = color & 0xFF;
+    lua_pushinteger(L,colour);
+    return 1;
+}
+
+static int lua_getG(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+    int color = luaL_checkinteger(L, 1);
+    u32 colour = (color >> 8) & 0xFF;
+    lua_pushinteger(L,colour);
+    return 1;
+}
+
+static int lua_getB(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+    int color = luaL_checkinteger(L, 1);
+    u32 colour = (color >> 16) & 0xFF;
+    lua_pushinteger(L,colour);
+    return 1;
+}
+
+static int lua_getA(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+    int color = luaL_checkinteger(L, 1);
+    u32 colour = (color >> 24) & 0xFF;
+    lua_pushinteger(L,colour);
+    return 1;
+}
+
 static int lua_vblank(lua_State *L){
 	int argc = lua_gettop(L);
 	#ifndef SKIP_ERROR_HANDLING
@@ -284,6 +343,11 @@ static const luaL_Reg Console_functions[] = {
 
 //Register our Color Functions
 static const luaL_Reg Color_functions[] = {
+  {"new",                				lua_color},
+  {"getR",								lua_getR},
+  {"getG",								lua_getG},
+  {"getB",								lua_getB},
+  {"getA",								lua_getA},
   {0, 0}
 };
 
