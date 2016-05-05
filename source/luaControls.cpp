@@ -72,7 +72,34 @@ static int lua_readC(lua_State *L)
 	ctrl_handles[current_handle][SDLK_g] = mouse_state;
 	
 	lua_pushinteger(L, (u32)ctrl_handles[current_handle]);
+	current_handle++;
+	if (current_handle >= CTRL_HANDLES) current_handle = 0;
 	return 1;
+}
+
+static int lua_readtouch(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	SDL_PumpEvents();
+	int x;
+	int y;
+	if (SDL_GetMouseState(&x, &y) & SDL_BUTTON(SDL_BUTTON_LEFT)){
+		x = x - 40;
+		y = y - 240;
+		if (x < 0) x = 0;
+		else if (x > 320) x = 320;
+		if (y < 0) y = 0;
+		else if (y > 240) y = 240;
+	}else{
+		x = 0;
+		y = 0;
+	}
+	lua_pushinteger(L, x);
+	lua_pushinteger(L, y);
+	return 2;
 }
 
 static int lua_check(lua_State *L)
@@ -90,6 +117,7 @@ static int lua_check(lua_State *L)
 //Register our Controls Functions
 static const luaL_Reg Controls_functions[] = {
   {"read",								lua_readC},
+  {"readTouch",							lua_readtouch},
   {"check",								lua_check},
   {0, 0}
 };
