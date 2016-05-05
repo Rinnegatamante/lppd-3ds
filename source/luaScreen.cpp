@@ -35,7 +35,16 @@
 #define u32 uint32_t
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+#include <windows.h>
+#include <psapi.h>
 extern bool quit;
+    
+size_t getTotalSystemMemory()
+{
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+    GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
+    return pmc.PrivateUsage;
+}
 
 static int lua_flip(lua_State *L)
 {
@@ -93,7 +102,13 @@ static int lua_freeimg(lua_State *L)
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	SDL_Surface* img = (SDL_Surface*)(luaL_checkinteger(L, 1));
+	unsigned long long tmp = getTotalSystemMemory();
 	SDL_FreeSurface(img);
+	unsigned long long tmp2 = getTotalSystemMemory();
+	size_t allocatedDim = tmp-tmp2;
+	allocatedDatas = allocatedDatas - allocatedDim;
+	size_t percent = (allocatedDatas * 100) / maxDatas;
+	drawDebug("Debug: ","Deallocated %lu bytes (Mem. usage: %u%%).\n",allocatedDim, percent);
 	return 0;
 }
 
@@ -104,8 +119,15 @@ static int lua_loadimg(lua_State *L)
     if (argc != 1) return luaL_error(L, "wrong number of arguments");
 	#endif
 	char* text = (char*)(luaL_checkstring(L, 1));
+	unsigned long long tmp = getTotalSystemMemory();
 	SDL_Surface* img = IMG_Load(text);
+	unsigned long long tmp2 = getTotalSystemMemory();
 	drawCommand("Screen.loadImage: ","Image created at offset 0x%lX.\n",img);
+	size_t allocatedDim = tmp2-tmp;
+	allocatedDatas = allocatedDatas + allocatedDim;
+	size_t percent = (allocatedDatas * 100) / maxDatas;
+	drawDebug("Debug: ","Allocated %lu bytes (Mem. usage: %u%%).\n",allocatedDim, percent);
+	if (percent > 80) drawWarning("Warning: ", "High memory usage!");
 	if (img == NULL) return luaL_error(L, "error while loading image.");
     lua_pushinteger(L, (u32)(img));
 	return 1;

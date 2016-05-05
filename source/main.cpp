@@ -15,6 +15,7 @@ GLenum texture_format=NULL;
 bool quit = 0;
 scrAttributes attrs;
 extern uint8_t* ctrl_handles[];
+int allocatedDatas;
 
 int main(int argc, char* argv[]){
 	
@@ -82,6 +83,7 @@ int main(int argc, char* argv[]){
 			} 
 		}
 		
+		allocatedDatas = baseDatas;
 		if (buffer != NULL) errMsg = runScript((const char*)buffer, true);
 		else{
 			drawError("FATAL ERROR: ","Main script is empty.\n");

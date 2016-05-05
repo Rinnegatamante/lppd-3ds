@@ -61,4 +61,8 @@ void luaMic_init(lua_State *L);
 void luaCore_init(lua_State *L);
 void stackDump (lua_State *L);
 
+#define baseDatas 1887436
+extern int allocatedDatas; // Arbitrary default allocated datas (in reality it's probably a bit bigger)
+#define maxDatas 33554432
+
 #endif
