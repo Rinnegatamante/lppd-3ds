@@ -2,7 +2,7 @@ TARGET := lppd-3ds
 SOURCES := source
 BUILD	:= build
 
-LIBS := -llua -lopengl32 -lSDL -lSDL_image -lSDL_mixer 
+LIBS := -llua -lopengl32 -lSDL -lSDL_image -lSDL_mixer -lpsapi
 
 CFLAGS := -DNO_STDIO_REDIRECT
 LFLAGS :=
