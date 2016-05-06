@@ -7,6 +7,7 @@ extern GLuint TopFB;
 extern GLuint BottomFB;
 extern GLenum texture_format;
 
+void clearScreen(int screen);
 void DrawPixel(uint8_t* screen,int x,int y,uint32_t color);
 void DrawAlphaPixel(uint8_t* screen, int x,int y, uint32_t color);
 void DrawImagePixel(uint8_t* screen, int x, int y, uint32_t color, int w);

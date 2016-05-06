@@ -34,6 +34,11 @@ void drawCommand(char* cmd, char* format, ...){
 	va_end (arg);
 }
 
+void clearScreen(int screen){
+	if (screen==1) memset(BottomLFB,0,230400);
+	else memset(TopLFB,0,288000);
+}
+
 void drawWarning(char* cmd, char* format, ...){
 	scrSetColors(scrYellow,attrs.paper);
 	printf(cmd);

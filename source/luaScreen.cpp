@@ -30,21 +30,13 @@
 #include <string.h>
 #include <unistd.h>
 #include "include/luaplayer.h"
+#include "include/utils.h"
 #include "include/graphics/graphics.h"
 #define u8 uint8_t
 #define u32 uint32_t
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
-#include <windows.h>
-#include <psapi.h>
 extern bool quit;
-    
-size_t getTotalSystemMemory()
-{
-    PROCESS_MEMORY_COUNTERS_EX pmc;
-    GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
-    return pmc.PrivateUsage;
-}
 
 static int lua_flip(lua_State *L)
 {
@@ -128,6 +120,10 @@ static int lua_loadimg(lua_State *L)
 	size_t percent = (allocatedDatas * 100) / maxDatas;
 	drawDebug("Debug: ","Allocated %lu bytes (Mem. usage: %u%%).\n",allocatedDim, percent);
 	if (percent > 80) drawWarning("Warning: ", "High memory usage!");
+	if (percent > 100){
+		drawError("FATAL ERROR: ", "Out of memory!");
+		return luaL_error(L, "internal error.");
+	}
 	if (img == NULL) return luaL_error(L, "error while loading image.");
     lua_pushinteger(L, (u32)(img));
 	return 1;
@@ -358,6 +354,19 @@ static int lua_vblank(lua_State *L){
 	return 0;
 }
 
+static int lua_clearScreen(lua_State *L){
+    int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int screen = luaL_checkinteger(L,1);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((screen != 1) && (screen != 0)) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	clearScreen(screen);
+	return 0;
+}
+
 //Register our Console Functions
 static const luaL_Reg Console_functions[] = {
   {0, 0}
@@ -385,6 +394,7 @@ static const luaL_Reg Screen_functions[] = {
   {"flip",				lua_flip},
   {"refresh",			lua_refresh},
   {"waitVblankStart",	lua_vblank},
+  {"clear",  			lua_clearScreen}, 
   {0, 0}
 };
 
