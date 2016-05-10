@@ -10,8 +10,8 @@ LDARGS := -DNO_STDIO_REDIRECT
 
 C_FILES	:= $(shell find $(SOURCES) -type f -name '*.cpp')
 OBJ_FILES := $(patsubst %.cpp,%.o,$(C_FILES))
-CC = g++
-LD = g++
+CC = $(GCC_PREFIX)g++
+LD = $(GCC_PREFIX)g++
 
 all: $(TARGET).exe
 
