@@ -21,12 +21,16 @@
 #- Copyright (c) Nanni <lpp.nanni@gmail.com> ---------------------------------------------------------------------------#
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #----------------------------------------------------------------------------------------------------------------------*/
-
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_mixer.h>
+#include <SDL/SDL_opengl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <SDL/SDL.h>
 #include "include/luaplayer.h"
+#include "include/graphics/graphics.h"
 #define stringify(str) #str
 #define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 #define u32 uint32_t
@@ -114,11 +118,23 @@ static int lua_check(lua_State *L)
     return 1;
 }
 
+static int lua_shell(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+       if (argc != 0) return luaL_error(L, "wrong number of arguments.");
+	#endif
+	drawCommand("Controls.shellStatus: ","Returning true as result.\n");
+	lua_pushboolean(L, true);
+	return 1;
+}
+
 //Register our Controls Functions
 static const luaL_Reg Controls_functions[] = {
   {"read",								lua_readC},
   {"readTouch",							lua_readtouch},
   {"check",								lua_check},
+  {"shellStatus", 						lua_shell},
   {0, 0}
 };
 
