@@ -4,7 +4,7 @@ BUILD	:= build
 
 LIBS := -llua -lopengl32 -lSDL -lSDL_image -lSDL_mixer -lpsapi
 
-CFLAGS := -DNO_STDIO_REDIRECT
+CFLAGS := -DNO_STDIO_REDIRECT -fpermissive
 LFLAGS :=
 LDARGS := -DNO_STDIO_REDIRECT
 

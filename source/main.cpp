@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <math.h>
 #include "include/luaplayer.h"
+#include "include/utils.h"
 #include "include/graphics/graphics.h"
 #include "include/scrutil/scrutil.h"
 
