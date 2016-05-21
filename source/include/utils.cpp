@@ -5,6 +5,7 @@
 #include <psapi.h>
 #include <sys/time.h>
 #include <math.h>
+#include <stdint.h>
 
 size_t getTotalSystemMemory(){
     PROCESS_MEMORY_COUNTERS_EX pmc;

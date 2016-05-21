@@ -256,6 +256,143 @@ static int lua_getdate(lua_State *L){
 	return 4;
 }
 
+static int lua_getRegion(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	drawCommand("System.getRegion: ", "Returning EUR region.\n");
+	lua_pushinteger(L,2);
+	return 1;
+}
+
+
+static int lua_getLang(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	drawCommand("System.getLanguage: ", "Returning EN language.\n");
+	lua_pushinteger(L,1);
+	return 1;
+}
+
+static int lua_getUsername(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	char username[0x0E];
+	memcpy(username,"lpp-3ds bot",11);
+	drawCommand("System.getUsername: ", "Returning default username.\n");
+	lua_pushstring(L,username);
+	return 1;
+}
+
+static int lua_getBirth(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	drawCommand("System.getBirthday: ", "Returning 9 February as birthday.\n");
+	lua_pushinteger(L,9);
+	lua_pushinteger(L,2);
+	return 2;
+}
+
+static int lua_openfile(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 2) && (argc != 3) && (argc != 4)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	char file_tbo[256];
+	const char *file_tmp = luaL_checkstring(L, 1);
+	int type = luaL_checkinteger(L, 2);
+	u32 archive_id;
+	u32 filesize;
+	if (argc >= 3){
+		char warn[256];
+		drawWarning("Warning: ", warn);
+		archive_id = luaL_checknumber(L,3);
+		sprintf(warn,"Extdata is unavailable on PC, using ext%lu-%s as file.", archive_id, file_tmp);
+		if (argc == 4) filesize = luaL_checkinteger(L, 4);
+		sprintf(file_tbo, "ext%lu-%s", archive_id, file_tmp);
+	}else sprintf(file_tbo, "%s", file_tmp);
+	FILE* handle;
+	if (type == 0) handle = fopen(file_tbo, "r");
+	else if (type == 1) handle = fopen(file_tbo, "r+");
+	else handle = fopen(file_tbo, "w+");
+	#ifndef SKIP_ERROR_HANDLING
+		if (handle == NULL) return luaL_error(L, "file doesn't exist.");
+	#endif
+	drawCommand("io.open: ","Opening file handle at offset 0x%lX.\n",(u32)handle);
+	lua_pushinteger(L,(u32)handle);
+	return 1;
+}
+
+static int lua_getsize(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	FILE* file = (FILE*)luaL_checkinteger(L, 1);
+	fseek(file, 0, SEEK_END);
+	u64 size = ftell(file);
+	lua_pushinteger(L,size);
+	return 1;
+}
+
+static int lua_closefile(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	FILE* file = (FILE*)luaL_checkinteger(L, 1);
+	fclose(file);
+	return 0;
+}
+
+static int lua_readfile(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 3) return luaL_error(L, "wrong number of arguments");
+	#endif
+	FILE* file = (FILE*)luaL_checkinteger(L, 1);
+	u64 init = luaL_checkinteger(L, 2);
+	u64 size = luaL_checkinteger(L, 3);
+	unsigned char *buffer = (unsigned char*)malloc(size+1);
+	u32 bytesRead;
+	fseek(file, init, SEEK_SET);
+	fread(buffer, 1, size, file);
+	buffer[size] = 0;
+	lua_pushlstring(L,(const char*)buffer,size);
+	free(buffer);
+	return 1;
+}
+
+static int lua_writefile(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 4) return luaL_error(L, "wrong number of arguments");
+	#endif
+	FILE* file = (FILE*)luaL_checkinteger(L, 1);
+	u64 init = luaL_checkinteger(L, 2);
+	const char *text = luaL_checkstring(L, 3);
+	u64 size = luaL_checkinteger(L, 4);
+	fseek(file, init, SEEK_SET);
+	fwrite(text, 1, size, file);
+	return 0;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
 	{"getFirmware",			lua_getFW},
@@ -269,8 +406,19 @@ static const luaL_Reg System_functions[] = {
 	{"currentDirectory",	lua_curdir},
 	{"getTime",				lua_gettime},
 	{"getDate",				lua_getdate},
+	{"getRegion",			lua_getRegion},
+	{"getLanguage",			lua_getLang},
+	{"getUsername",			lua_getUsername},
+	{"getBirthday",			lua_getBirth},
 	{"doesFileExist",		lua_exists},
 	{"checkBuild",			lua_checkbuild},
+	// I/O Module patch
+	{"openFile",			lua_openfile},
+	{"readFile",			lua_readfile},
+	{"writeFile",			lua_writefile},
+	{"closeFile", 			lua_closefile},
+	{"getFileSize", 		lua_getsize},
+	// End I/O Module patch
 	{0, 0}
 };
 
