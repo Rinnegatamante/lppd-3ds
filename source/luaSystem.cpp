@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
 #include "include/luaplayer.h"
 #include "include/graphics/graphics.h"
 #include "include/utils.h"
@@ -48,6 +49,7 @@
 #define u32 uint32_t
 #define u64 uint64_t
 #include <time.h>
+
 static int lua_exit(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -319,9 +321,9 @@ static int lua_openfile(lua_State *L)
 		char warn[256];
 		drawWarning("Warning: ", warn);
 		archive_id = luaL_checknumber(L,3);
-		sprintf(warn,"Extdata is unavailable on PC, using ext%lu-%s as file.", archive_id, file_tmp);
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", file_tmp, archive_id);
 		if (argc == 4) filesize = luaL_checkinteger(L, 4);
-		sprintf(file_tbo, "ext%lu-%s", archive_id, file_tmp);
+		sprintf(file_tbo, "%s.ext%lu", file_tmp, archive_id);
 	}else sprintf(file_tbo, "%s", file_tmp);
 	FILE* handle;
 	if (type == 0) handle = fopen(file_tbo, "r");
@@ -393,6 +395,81 @@ static int lua_writefile(lua_State *L)
 	return 0;
 }
 
+static int lua_rename(lua_State *L) {
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *path = luaL_checkstring(L, 1);
+	const char *path2 = luaL_checkstring(L, 2);
+	rename(path,path2);
+	return 0;
+}
+
+static int lua_delfile(lua_State *L) {
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *path = luaL_checkstring(L, 1);
+	char file_tbo[256];
+	if (argc == 2){
+		u32 archive_id = luaL_checkinteger(L, 2);
+		char warn[256];
+		drawWarning("Warning: ", warn);
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", path, archive_id);
+		sprintf(file_tbo, "%s.ext%lu", path, archive_id);
+	}else sprintf(file_tbo, "%s", path);
+	remove(file_tbo);
+	return 0;
+}
+
+static int lua_deldir(lua_State *L) {
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *path = luaL_checkstring(L, 1);
+	char file_tbo[256];
+	if (argc == 2){
+		u32 archive_id = luaL_checkinteger(L, 2);
+		char warn[256];
+		drawWarning("Warning: ", warn);
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", path, archive_id);
+		sprintf(file_tbo, "%s.ext%lu", path, archive_id);
+	}else sprintf(file_tbo, "%s", path);
+	rmdir(file_tbo);
+	return 0;
+}
+
+static int lua_createdir(lua_State *L) {
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1 && argc != 2) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *path = luaL_checkstring(L, 1);
+	char file_tbo[256];
+	if (argc == 2){
+		u32 archive_id = luaL_checkinteger(L, 2);
+		char warn[256];
+		drawWarning("Warning: ", warn);
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", path, archive_id);
+		sprintf(file_tbo, "%s.ext%lu", path, archive_id);
+	}else sprintf(file_tbo, "%s", path);
+	mkdir(file_tbo);
+	return 0;
+}
+
+static int lua_detectsd(lua_State *L) {
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	drawCommand("System.checkSDMC: ", "Returning true.\n");
+	lua_pushboolean(L, true);
+	return 1;
+}
+
 //Register our System Functions
 static const luaL_Reg System_functions[] = {
 	{"getFirmware",			lua_getFW},
@@ -412,6 +489,12 @@ static const luaL_Reg System_functions[] = {
 	{"getBirthday",			lua_getBirth},
 	{"doesFileExist",		lua_exists},
 	{"checkBuild",			lua_checkbuild},
+	{"renameFile",			lua_rename},
+	{"deleteFile",			lua_delfile},
+	{"renameDirectory",		lua_rename},
+	{"deleteDirectory",		lua_deldir},
+	{"createDirectory",		lua_createdir},
+	{"checkSDMC",		lua_detectsd},
 	// I/O Module patch
 	{"openFile",			lua_openfile},
 	{"readFile",			lua_readfile},
