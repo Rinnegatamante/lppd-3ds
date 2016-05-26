@@ -319,9 +319,9 @@ static int lua_openfile(lua_State *L)
 	u32 filesize;
 	if (argc >= 3){
 		char warn[256];
-		drawWarning("Warning: ", warn);
 		archive_id = luaL_checknumber(L,3);
-		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", file_tmp, archive_id);
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.\n", file_tmp, archive_id);
+		drawWarning("Warning: ", warn);
 		if (argc == 4) filesize = luaL_checkinteger(L, 4);
 		sprintf(file_tbo, "%s.ext%lu", file_tmp, archive_id);
 	}else sprintf(file_tbo, "%s", file_tmp);
@@ -416,8 +416,8 @@ static int lua_delfile(lua_State *L) {
 	if (argc == 2){
 		u32 archive_id = luaL_checkinteger(L, 2);
 		char warn[256];
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.\n", path, archive_id);
 		drawWarning("Warning: ", warn);
-		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", path, archive_id);
 		sprintf(file_tbo, "%s.ext%lu", path, archive_id);
 	}else sprintf(file_tbo, "%s", path);
 	remove(file_tbo);
@@ -434,8 +434,8 @@ static int lua_deldir(lua_State *L) {
 	if (argc == 2){
 		u32 archive_id = luaL_checkinteger(L, 2);
 		char warn[256];
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.\n", path, archive_id);
 		drawWarning("Warning: ", warn);
-		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", path, archive_id);
 		sprintf(file_tbo, "%s.ext%lu", path, archive_id);
 	}else sprintf(file_tbo, "%s", path);
 	rmdir(file_tbo);
@@ -452,8 +452,8 @@ static int lua_createdir(lua_State *L) {
 	if (argc == 2){
 		u32 archive_id = luaL_checkinteger(L, 2);
 		char warn[256];
+		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.\n", path, archive_id);
 		drawWarning("Warning: ", warn);
-		sprintf(warn,"Extdata is unavailable on PC, using %s.ext%lu as file.", path, archive_id);
 		sprintf(file_tbo, "%s.ext%lu", path, archive_id);
 	}else sprintf(file_tbo, "%s", path);
 	mkdir(file_tbo);
@@ -494,7 +494,7 @@ static const luaL_Reg System_functions[] = {
 	{"renameDirectory",		lua_rename},
 	{"deleteDirectory",		lua_deldir},
 	{"createDirectory",		lua_createdir},
-	{"checkSDMC",		lua_detectsd},
+	{"checkSDMC",			lua_detectsd},
 	// I/O Module patch
 	{"openFile",			lua_openfile},
 	{"readFile",			lua_readfile},
