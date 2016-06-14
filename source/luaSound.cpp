@@ -21,70 +21,47 @@
 #- Copyright (c) Nanni <lpp.nanni@gmail.com> ---------------------------------------------------------------------------#
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#- Credits : -----------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
-#- StapleButter for debug font -----------------------------------------------------------------------------------------#
-#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
-#- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
-#-----------------------------------------------------------------------------------------------------------------------*/
+#----------------------------------------------------------------------------------------------------------------------*/
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_mixer.h>
+#include <SDL/SDL_opengl.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdio.h>
 #include "include/luaplayer.h"
+#include "include/graphics/graphics.h"
+#include "include/utils.h"
+#define stringify(str) #str
+#define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
 
-static lua_State *L;
-extern void drawError(char* cmd, char* format, ...);
+static int lua_service(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	char srv[9];
+	sprintf(srv,"csnd:SND");
+	drawCommand("Sound.getService: ", "Returning csnd:SND service.\n");
+	lua_pushstring(L, srv);
+	return 1;
+}
 
-const char *runScript(const char* script, bool isStringBuffer)
-{
-	L = luaL_newstate();
-	
-	// Standard libraries
-	luaL_openlibs(L);
-	
-	// Modules
-	luaSystem_init(L);
-	luaScreen_init(L);
-	luaSound_init(L);
-	luaControls_init(L);
-	luaTimer_init(L);
-	
-	int s = 0;
-	const char *errMsg = NULL;
-	
-	//Patching I/O module
-	char* patch = "io.open = System.openFile\n\
-			 io.write = System.writeFile\n\
-			 io.close = System.closeFile\n\
-			 io.read = System.readFile\n\
-			 io.size = System.getFileSize";
-	luaL_loadbuffer(L, patch, strlen(patch), NULL); 
-	lua_KFunction dofilecont = (lua_KFunction)(lua_gettop(L) - 1);
-	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
-	
-	if(!isStringBuffer) 
-		s = luaL_loadfile(L, script);
-	else 
-		s = luaL_loadbuffer(L, script, strlen(script), NULL);
-		
-	if (s == 0) 
-	{
-		s = lua_pcall(L, 0, LUA_MULTRET, 0);
-	}
-	if (s) 
-	{
-		errMsg = lua_tostring(L, -1);
-		lua_pop(L, 1); // remove error message
-	}
-	lua_close(L);
-	
-	return errMsg;
+static const luaL_Reg Sound_functions[] = {
+	{"getService",				lua_service},
+	{0, 0}
+};
+
+void luaSound_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Sound_functions, 0);
+	lua_setglobal(L, "Sound");
+	int LINEAR_INTERP = 0;
+	int POLYPHASE_INTERP = 1;
+	int NO_INTERP = 2;
+	VariableRegister(L, LINEAR_INTERP);
+	VariableRegister(L, POLYPHASE_INTERP);
+	VariableRegister(L, NO_INTERP);
 }
