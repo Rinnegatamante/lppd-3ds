@@ -34,9 +34,6 @@ struct Music{
 	uint32_t magic;
 	uint32_t samplerate;
 	uint16_t bytepersample;
-	uint8_t* audiobuf;
-	uint8_t* audiobuf2;
-	uint32_t lastCheck;
 	uint32_t size;
 	uint32_t mem_size;
 	Mix_Chunk* sourceFile;
@@ -44,12 +41,9 @@ struct Music{
 	uint32_t startRead;
 	char author[256];
 	char title[256];
-	uint64_t tick;
 	bool isPlaying;
 	uint32_t ch;
 	uint8_t audiotype;
-	bool streamLoop;
 	bool big_endian;
 	uint8_t encoding;
-	uint32_t audio_pointer;
 };

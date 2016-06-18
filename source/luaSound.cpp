@@ -42,23 +42,6 @@
 #define u32 uint32_t
 #define u64 uint64_t
 
-// Audio callback for PCM16 audiocodec
-SDL_AudioSpec device;
-uint32_t audio_tot;
-uint32_t audio_len;
-uint8_t* audio_pos;
-uint8_t* audio_start;
-void wav_callback(void *udata, Uint8 *stream, int len){
-	if (audio_len == 0){
-		audio_len = audio_tot;
-		audio_pos = audio_start;
-	}
-	len = ( len > audio_len ? audio_len : len );
-	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
-	audio_pos += len;
-	audio_len -= len;
-}
-
 static int lua_openwav(lua_State *L)
 {
 
@@ -156,11 +139,12 @@ static int lua_openwav(lua_State *L)
 		songFile->size = size - pos;
 		songFile->startRead = 0;
 		songFile->mem_size = 0;
-		songFile->audiobuf2 = NULL;
 		songFile->sourceFile = NULL;
 		songFile->sourceFile2 = NULL;
-		if (mem_size) songFile->sourceFile2 = Mix_LoadMUS(file_tbo);
-		else songFile->sourceFile = Mix_LoadWAV(file_tbo);
+		if (mem_size){
+			drawWarning("Warning: ","Remember to call Sound.updateStream() to sanitize the streaming in main loop on retail hardware.");
+			songFile->sourceFile2 = Mix_LoadMUS(file_tbo);
+		}else songFile->sourceFile = Mix_LoadWAV(file_tbo);
 		
 		// Pushing memory block to LUA stack
 		songFile->magic = 0x4C534E44;
@@ -173,6 +157,103 @@ static int lua_openwav(lua_State *L)
 	
 	return 1;
 }
+
+static int lua_openogg(lua_State *L)
+{
+
+	// Init function
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((argc != 1) && (argc != 2)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	const char *file_tbo = luaL_checkstring(L, 1);
+	// Check for Streaming feature usage
+	bool mem_size = false;
+	if (argc == 2) mem_size = lua_toboolean(L, 2);
+	
+	// Open file
+	FILE* fileHandle = fopen(file_tbo, "rb");
+	
+	// Check for magic
+	u32 next_pos,pos,magic,samplerate,bytesRead,jump,chunk=0x00000000;
+	u16 audiotype;
+	fread(&magic, 1, 4, fileHandle);
+	if (magic == 0x5367674F){
+	
+		// Init wav struct
+		Music* songFile = (Music*)malloc(sizeof(Music));
+		songFile->ch = 0xDEADBEEF;
+		strcpy(songFile->author,"");
+		strcpy(songFile->title,"");
+		u64 size;
+		songFile->big_endian = false;
+		
+		// Metadatas extraction
+		fseek(fileHandle, 0x60, SEEK_SET);
+		u32 half_magic = 0xDEADBEEF;
+		u32 info_size = 0xDEADBEEF;
+		u32 offset;
+		char info_type[7];
+		int i = 0;
+		while (half_magic != 0x726F7603){
+			i++;
+			fread(&half_magic,4,1,fileHandle);
+			fseek(fileHandle,0x60+i, SEEK_SET);
+		}
+		fseek(fileHandle, 0x06, SEEK_CUR);
+		fread(&info_size,4,1,fileHandle);
+		fseek(fileHandle, info_size + 4, SEEK_CUR);
+		fread(&info_size,4,1,fileHandle);
+		while (info_size != 0x6F760501){
+			offset = ftell(fileHandle);
+			if (offset > 0x200) break; // Temporary patch for files without COMMENT section
+			fread(&info_type,6,1,fileHandle);
+			if ((strcmp((const char*)&info_type,"ARTIST") == 0) || (strcmp((const char*)&info_type,"artist") == 0)){
+				fseek(fileHandle,0x01,SEEK_CUR);
+				fread(&songFile->author,info_size - 7,1,fileHandle);
+				songFile->author[info_size - 7] = 0;
+			}else if ((strcmp((const char*)&info_type,"TITLE=") == 0) || (strcmp((const char*)&info_type,"title=") == 0)){
+				fread(&songFile->title,info_size - 6,1,fileHandle);
+				songFile->title[info_size - 6] = 0;
+			}
+			fseek(fileHandle,offset+info_size, SEEK_SET);
+			fread(&info_size,4,1,fileHandle);
+		}
+
+		// Music info extraction
+		//fseek(fileHandle, 1, SEEK_END);
+		//size = ftell(fileHandle);
+		fseek(fileHandle, 38, SEEK_SET);
+		fread(&audiotype, 1, 2, fileHandle);
+		fread(&samplerate, 1, 4, fileHandle);
+		songFile->bytepersample = audiotype<<1;
+		songFile->encoding = CSND_ENCODING_PCM16;
+		songFile->samplerate = samplerate;
+		songFile->audiotype = audiotype;
+		drawCommand("Sound.openOgg: ","%s opened (samplerate: %i, %s)\n", file_tbo, songFile->samplerate, (songFile->audiotype == 1) ? "mono" : "stereo");
+		songFile->isPlaying = false;
+		//songFile->size = size - pos;
+		songFile->startRead = 0;
+		songFile->mem_size = 0;
+		songFile->sourceFile = NULL;
+		songFile->sourceFile2 = NULL;
+		if (mem_size){
+			drawWarning("Warning: ","Remember to call Sound.updateStream() to sanitize the streaming in main loop on retail hardware.");
+			songFile->sourceFile2 = Mix_LoadMUS(file_tbo);
+		}else songFile->sourceFile = Mix_LoadWAV(file_tbo);
+		
+		// Pushing memory block to LUA stack
+		songFile->magic = 0x4C534E44;
+		lua_pushinteger(L,(u32)songFile);
+		
+	}
+	
+	// Closing file if no streaming feature usage
+	fclose(fileHandle);
+	
+	return 1;
+}
+
 
 static int lua_play(lua_State *L)
 {
@@ -204,11 +285,11 @@ static int lua_play(lua_State *L)
 	
 	// Playing audio file
 	src->isPlaying = true;
-	if (src->sourceFile == NULL){
+	if (src->sourceFile == NULL && src->sourceFile2 == NULL){
 		drawError("Error: ","Failed opening audio device.\n");
 		drawError("SDL_Mixer Error: ", "%s\n",Mix_GetError());
 	}else{
-		if (src->sourceFile != NULL) Mix_PlayChannel(-1,src->sourceFile, loop ? -1 : 0);
+		if (src->sourceFile != NULL) src->ch = Mix_PlayChannel(-1,src->sourceFile, loop ? -1 : 0);
 		else Mix_PlayMusic(src->sourceFile2, loop ? -1 : 0);
 	}
 	
@@ -248,12 +329,116 @@ static int lua_soundterm(lua_State *L)
 	return 0;
 }
 
+static int lua_getTitle(lua_State *L){
+int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	lua_pushstring(L, src->title);
+	return 1;
+}
+
+static int lua_getAuthor(lua_State *L){
+int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	lua_pushstring(L, src->author);
+	return 1;
+}
+
+static int lua_getType(lua_State *L){
+int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	lua_pushinteger(L, src->audiotype);
+	return 1;
+}
+
+static int lua_updatestream(lua_State *L){
+	int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	return 0;
+}
+
+static int lua_getSrate(lua_State *L){
+int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	lua_pushinteger(L, src->samplerate);
+	return 1;
+}
+
+static int lua_pause(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	if (src->isPlaying){
+		if (src->sourceFile != NULL) Mix_Pause(src->ch);
+		else Mix_PauseMusic();
+		src->isPlaying = false;
+	}
+	return 0;
+}
+
+static int lua_resume(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 1) return luaL_error(L, "wrong number of arguments");
+	#endif
+	Music* src = (Music*)luaL_checkinteger(L, 1);
+	#ifndef SKIP_ERROR_HANDLING
+		if (src->magic != 0x4C534E44) return luaL_error(L, "attempt to access wrong memory block type");
+	#endif
+	if (!src->isPlaying){
+		if (src->sourceFile != NULL) Mix_Resume(src->ch);
+		else Mix_ResumeMusic();
+		src->isPlaying = true;	
+	}
+	return 0;
+}
+
 static const luaL_Reg Sound_functions[] = {
 	{"getService",				lua_service},
 	{"openWav",					lua_openwav},
+	{"openOgg",					lua_openogg},
 	{"init",					lua_soundinit},
 	{"term",					lua_soundterm},
+	{"getAuthor",				lua_getAuthor},
+	{"getTitle",				lua_getTitle},
+	{"getSrate",				lua_getSrate},
+	{"getType",					lua_getType},
 	{"play",					lua_play},
+	{"pause",					lua_pause},
+	{"resume",					lua_resume},
+	{"updateStream",			lua_updatestream},
 	{0, 0}
 };
 
