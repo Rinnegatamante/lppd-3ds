@@ -103,7 +103,7 @@ void DrawPixel(u8* screen, int x,int y, u32 color){
 void DrawAlphaPixel(u8* screen, int x,int y, u32 color){
 	if (x < 0 || y < 0 || y > 240 || ((screen == TopLFB) ? x > 400 : x > 320)) return;
 	u8 alpha = (((color) >> 24) & 0xFF);
-	int idx = (x + y * ((screen == TopLFB) ? 400 : 320)) * 3;
+	int idx = (x + y * ((screen == TopLFB) ? 400 : 320));
 	float ratio = alpha / 255.0f;
 	screen[idx*3] = ((color & 0xFF) * ratio) + (screen[idx*3] * (1.0 - ratio));
 	screen[idx*3+1] = ((((color) >> 8) & 0xFF) * ratio) + (screen[idx*3+1] * (1.0 - ratio));
