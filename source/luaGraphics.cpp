@@ -21,71 +21,95 @@
 #- Copyright (c) Nanni <lpp.nanni@gmail.com> ---------------------------------------------------------------------------#
 #- Copyright (c) Rinnegatamante <rinnegatamante@gmail.com> -------------------------------------------------------------#
 #-----------------------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#- Credits : -----------------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------------------------#
-#- Smealum for ctrulib and ftpony src ----------------------------------------------------------------------------------#
-#- StapleButter for debug font -----------------------------------------------------------------------------------------#
-#- Lode Vandevenne for lodepng -----------------------------------------------------------------------------------------#
-#- Jean-loup Gailly and Mark Adler for zlib ----------------------------------------------------------------------------#
-#- Special thanks to Aurelio for testing, bug-fixing and various help with codes and implementations -------------------#
-#-----------------------------------------------------------------------------------------------------------------------*/
+#----------------------------------------------------------------------------------------------------------------------*/
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_mixer.h>
+#include <SDL/SDL_opengl.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdio.h>
 #include "include/luaplayer.h"
+#include "include/graphics/graphics.h"
+#include "include/utils.h"
+#include "include/audio.h"
+#define stringify(str) #str
+#define VariableRegister(lua, value) do { lua_pushinteger(lua, value); lua_setglobal (lua, stringify(value)); } while(0)
+#define u16 uint16_t
+#define u8 uint8_t
+#define u32 uint32_t
+#define u64 uint64_t
 
-static lua_State *L;
-extern void drawError(char* cmd, char* format, ...);
+bool gpu_init = false;
+int cur_screen = 0;
 
-const char *runScript(const char* script, bool isStringBuffer)
+static int lua_end(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	if (!gpu_init){
+		drawError("Error: ", "GPU is not intialized.");
+		return 0;
+	}
+    cur_screen = 0;
+    return 0;
+}
+
+static int lua_start(lua_State *L) {
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 2) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int screen = luaL_checkinteger(L,1);
+	int side=0;
+	if (argc == 2) side = luaL_checkinteger(L,2);
+	if (!gpu_init){
+		drawError("Error: ", "GPU is not intialized.");
+		return 0;
+	}
+    cur_screen = screen;
+	clearScreen(cur_screen);
+    return 0;
+}
+
+static int lua_init(lua_State *L)
 {
-	L = luaL_newstate();
-	
-	// Standard libraries
-	luaL_openlibs(L);
-	
-	// Modules
-	luaSystem_init(L);
-	luaScreen_init(L);
-	luaSound_init(L);
-	luaControls_init(L);
-	luaGraphics_init(L);
-	luaTimer_init(L);
-	
-	int s = 0;
-	const char *errMsg = NULL;
-	
-	//Patching I/O module
-	char* patch = "io.open = System.openFile\n\
-			 io.write = System.writeFile\n\
-			 io.close = System.closeFile\n\
-			 io.read = System.readFile\n\
-			 io.size = System.getFileSize";
-	luaL_loadbuffer(L, patch, strlen(patch), NULL); 
-	lua_KFunction dofilecont = (lua_KFunction)(lua_gettop(L) - 1);
-	lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
-	
-	if(!isStringBuffer) 
-		s = luaL_loadfile(L, script);
-	else 
-		s = luaL_loadbuffer(L, script, strlen(script), NULL);
-		
-	if (s == 0) 
-	{
-		s = lua_pcall(L, 0, LUA_MULTRET, 0);
-	}
-	if (s) 
-	{
-		errMsg = lua_tostring(L, -1);
-		lua_pop(L, 1); // remove error message
-	}
-	lua_close(L);
-	
-	return errMsg;
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	gpu_init = true;
+	return 0;
+}
+
+static int lua_term(lua_State *L)
+{
+    int argc = lua_gettop(L);
+	#ifndef SKIP_ERROR_HANDLING
+		if (argc != 0) return luaL_error(L, "wrong number of arguments");
+	#endif
+	gpu_init = false;
+	return 0;
+}
+
+//Register our Graphics Functions
+static const luaL_Reg Graphics_functions[] = {
+  {"init",					lua_init},
+  {"term",					lua_term},
+  {"initBlend",				lua_start},
+  {"termBlend",				lua_end},
+  {0, 0}
+};
+
+void luaGraphics_init(lua_State *L) {
+	lua_newtable(L);
+	luaL_setfuncs(L, Graphics_functions, 0);
+	lua_setglobal(L, "Graphics");
+	u8 BORDER = 1;
+	u8 CENTER = 3;
+	VariableRegister(L,BORDER);
+	VariableRegister(L,CENTER);
 }
