@@ -233,11 +233,105 @@ static int lua_pixel(lua_State *L){
 	}else if (screen == 1) buffer = BottomLFB;
 	if (screen > 1){
 		SDL_Surface* target = (SDL_Surface*)screen;
+		drawWarning("Warning: ","Skipped target image checks.\n");
 		if (target->format->BitsPerPixel == 24) DrawImagePixel((u8*)target->pixels, x, y, color, target->w);
 		else Draw32bppImagePixel((u8*)target->pixels, x, y, color, target->w);
 	}else{
 		if (alpha == 0xFF) DrawPixel(buffer,x,y,color);
 		else DrawAlphaPixel(buffer,x,y,color);
+	}
+	return 0;
+}
+
+static int lua_drawline(lua_State *L){
+    int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
+	u8 alpha = (color >> 24) & 0xFF;
+	int screen = luaL_checkinteger(L,6);
+	int side=0;
+	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x1 > 400 || x2 > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x1 > 320 || x2 > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y1 > 240 || y2 > 240)) return luaL_error(L, "out of framebuffer bounds");
+	#endif
+	if (screen > 1){
+		SDL_Surface* target = (SDL_Surface*)screen;
+		drawWarning("Warning: ","Skipped target image checks.\n");
+		DrawImageLine(x1,y1,x2,y2,color,target);
+	}else{
+		if (alpha==255) DrawScreenLine(x1,y1,x2,y2,color,screen,side);
+		else DrawAlphaScreenLine(x1,y1,x2,y2,color,screen,side);
+	}
+	return 0;
+}
+
+static int lua_drawrect(lua_State *L){
+    int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
+	u8 alpha = (color >> 24) & 0xFF;
+	int screen = luaL_checkinteger(L,6);
+	int side=0;
+	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x1 > 400 || x2 > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x1 > 320 || x2 > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y1 > 240 || y2 > 240)) return luaL_error(L, "out of framebuffer bounds");
+	#endif
+	if (screen > 1){
+		SDL_Surface* target = (SDL_Surface*)screen;
+		drawWarning("Warning: ","Skipped target image checks.\n");
+		DrawImageRect(x1,y1,x2,y2,color,target);
+	}else{
+		if (alpha==255) DrawRect(x1,y1,x2,y2,color,screen,side);
+		else DrawAlphaRect(x1,y1,x2,y2,color,screen,side);
+	}
+	return 0;
+}
+
+static int lua_drawrect2(lua_State *L){
+    int argc = lua_gettop(L);
+    #ifndef SKIP_ERROR_HANDLING
+		if ((argc != 6) && (argc != 7)) return luaL_error(L, "wrong number of arguments");
+	#endif
+	int x1 = luaL_checkinteger(L,1);
+	int x2 = luaL_checkinteger(L,2);
+	int y1 = luaL_checkinteger(L,3);
+	int y2 = luaL_checkinteger(L,4);
+	u32 color = luaL_checkinteger(L,5);
+	u8 alpha = (color >> 24) & 0xFF;
+	int screen = luaL_checkinteger(L,6);
+	int side=0;
+	if (argc == 7) side = luaL_checkinteger(L,7);
+	#ifndef SKIP_ERROR_HANDLING
+		if ((x1 < 0) || (y1 < 0) || (x2 < 0) || (y2 < 0)) return luaL_error(L, "out of bounds");
+		if ((screen == 0) && (x1 > 400 || x2 > 400)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen == 1) && (x1 > 320 || x2 > 320)) return luaL_error(L, "out of framebuffer bounds");
+		if ((screen <= 1) && (y1 > 240 || y2 > 240)) return luaL_error(L, "out of framebuffer bounds");
+	#endif
+	if (screen > 1){
+		SDL_Surface* target = (SDL_Surface*)screen;
+		drawWarning("Warning: ","Skipped target image checks.\n");
+		DrawImageRectEmpty(x1,y1,x2,y2,color,target);
+	}else{
+		if (alpha==255) DrawRectEmpty(x1,y1,x2,y2,color,screen,side);
+		else DrawAlphaRectEmpty(x1,y1,x2,y2,color,screen,side);
 	}
 	return 0;
 }
@@ -390,6 +484,9 @@ static const luaL_Reg Screen_functions[] = {
   {"freeImage",			lua_freeimg},
   {"debugPrint",		lua_print},
   {"drawPixel",			lua_pixel},
+  {"drawLine",  		lua_drawline}, 
+  {"fillRect",  		lua_drawrect}, 
+  {"fillEmptyRect",  	lua_drawrect2}, 
   {"getPixel",			lua_pixel2},
   {"flip",				lua_flip},
   {"refresh",			lua_refresh},
